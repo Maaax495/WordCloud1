@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+    <title>课堂互动词云 · 彩色气泡</title>
+    <!-- 纯前端 QR 生成库 -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js">
+    </script>
+    <style>
+        /* ===== 全局重置 & 字体 ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'PingFang SC', 'Helvetica Neue', 'Microsoft YaHei', system-ui, -apple-system, sans-serif;
+            background: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 16px 20px 30px;
+            color: #1a237e;
+            user-select: none;
+        }
+
+        .app {
+            max-width: 1200px;
+            width: 100%;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        /* ===== 顶部栏 ===== */
+        .header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px 16px;
+            padding: 10px 0 6px;
+            border-bottom: 2px solid #e8edf5;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .header-left h1 {
+            font-size: 26px;
+            font-weight: 700;
+            background: linear-gradient(145deg, #0d47a1, #1565c0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 1px;
+            white-space: nowrap;
+        }
+
+        .header-left .stats {
+            display: flex;
+            gap: 18px;
+            font-size: 15px;
+            color: #37474f;
+            background: #f5f7fb;
+            padding: 6px 18px;
+            border-radius: 30px;
+            font-weight: 500;
+        }
+
+        .header-left .stats span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .header-left .stats .num {
+            color: #0d47a1;
+            font-weight: 700;
+            font-size: 17px;
+            min-width: 20px;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-shrink: 0;
+        }
+
+        /* ===== 二维码 ===== */
+        .qr-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #f8faff;
+            padding: 4px 12px 4px 8px;
+            border-radius: 30px;
+            border: 1px solid #e3e9f5;
+            transition: box-shadow 0.2s;
+            cursor: default;
+            position: relative;
+        }
+        .qr-wrapper:hover {
+            box-shadow: 0 2px 12px rgba(21, 101, 192, 0.10);
+        }
+
+        .qr-wrapper #qrcode-container {
+            width: 44px;
+            height: 44px;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .qr-wrapper #qrcode-container img,
+        .qr-wrapper #qrcode-container canvas {
+            width: 44px !important;
+            height: 44px !important;
+            display: block;
+        }
+
+        .qr-wrapper .qr-label {
+            font-size: 12px;
+            color: #546e7a;
+            line-height: 1.3;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+        .qr-wrapper .qr-label small {
+            display: block;
+            font-weight: 400;
+            font-size: 10px;
+            color: #90a4ae;
+        }
+
+        /* 二维码设置面板（仅在本地文件或需要时显示） */
+        .qr-settings {
+            display: none;
+            margin-top: 6px;
+            padding: 8px 12px;
+            background: #f0f4fa;
+            border-radius: 20px;
+            font-size: 13px;
+            color: #37474f;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+            border: 1px dashed #b0c4de;
+            width: 100%;
+        }
+        .qr-settings.active {
+            display: flex;
+        }
+        .qr-settings input[type="text"] {
+            flex: 1;
+            min-width: 120px;
+            padding: 6px 12px;
+            border: 1px solid #dce4f0;
+            border-radius: 30px;
+            font-size: 13px;
+            outline: none;
+            background: #fff;
+        }
+        .qr-settings input[type="text"]:focus {
+            border-color: #1e88e5;
+        }
+        .qr-settings .btn-sm {
+            padding: 5px 14px;
+            border: none;
+            border-radius: 30px;
+            background: #1e88e5;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .qr-settings .btn-sm:hover {
+            background: #1565c0;
+        }
+        .qr-settings .hint {
+            color: #90a4ae;
+            font-size: 11px;
+        }
+
+        /* ===== 词云容器 ===== */
+        .cloud-wrapper {
+            flex: 1;
+            background: #ffffff;
+            border-radius: 24px;
+            border: 2px dashed #e3edf7;
+            min-height: 340px;
+            padding: 28px 24px;
+            position: relative;
+            transition: border-color 0.3s;
+            display: flex;
+            flex-wrap: wrap;
+            align-content: flex-start;
+            gap: 12px 16px;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.02);
+        }
+
+        .cloud-wrapper:empty::after {
+            content: '✨ 等待词汇降临…';
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: #b0c4de;
+            letter-spacing: 2px;
+            font-weight: 400;
+            pointer-events: none;
+        }
+
+        /* ===== 单词气泡 ===== */
+        .word-bubble {
+            display: inline-block;
+            padding: 6px 18px;
+            border-radius: 50px;
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 18px;
+            line-height: 1.4;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 1px 3px rgba(0, 0, 0, 0.05);
+            transition: transform 0.15s ease, box-shadow 0.2s ease;
+            cursor: default;
+            animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+            transform-origin: center;
+            word-break: break-word;
+            text-align: center;
+            max-width: 260px;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+        }
+
+        .word-bubble:hover {
+            transform: scale(1.06);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+            z-index: 2;
+        }
+
+        @keyframes popIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.6) translateY(10px);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        /* ===== 底部输入区 ===== */
+        .input-area {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px 14px;
+            padding: 16px 20px;
+            background: #f8faff;
+            border-radius: 60px;
+            border: 1px solid #e3edf7;
+            transition: box-shadow 0.2s;
+        }
+        .input-area:focus-within {
+            box-shadow: 0 0 0 3px rgba(30, 136, 229, 0.15);
+            border-color: #64b5f6;
+        }
+
+        .input-area .input-group {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 180px;
+        }
+
+        .input-area label {
+            font-weight: 600;
+            font-size: 15px;
+            color: #1a237e;
+            white-space: nowrap;
+        }
+
+        .input-area input[type="text"] {
+            flex: 1;
+            padding: 12px 18px;
+            border: 2px solid #dce4f0;
+            border-radius: 40px;
+            font-size: 16px;
+            outline: none;
+            background: #ffffff;
+            transition: border-color 0.25s, box-shadow 0.2s;
+            min-width: 120px;
+            font-weight: 500;
+            color: #0d1b3e;
+        }
+        .input-area input[type="text"]:focus {
+            border-color: #1e88e5;
+            box-shadow: 0 0 0 3px rgba(30, 136, 229, 0.10);
+        }
+        .input-area input[type="text"]::placeholder {
+            color: #b0c4de;
+            font-weight: 400;
+        }
+
+        .input-area .btn {
+            padding: 11px 28px;
+            border: none;
+            border-radius: 40px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            white-space: nowrap;
+            background: #1e88e5;
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(30, 136, 229, 0.30);
+        }
+        .input-area .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(30, 136, 229, 0.40);
+            background: #1976d2;
+        }
+        .input-area .btn:active {
+            transform: scale(0.96);
+            box-shadow: 0 2px 8px rgba(30, 136, 229, 0.25);
+        }
+
+        .input-area .btn-secondary {
+            background: #e8edf5;
+            color: #37474f;
+            box-shadow: none;
+        }
+        .input-area .btn-secondary:hover {
+            background: #dce4f0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            transform: translateY(-1px);
+        }
+
+        .input-area .btn-danger {
+            background: #ef5350;
+            box-shadow: 0 4px 12px rgba(239, 83, 80, 0.25);
+        }
+        .input-area .btn-danger:hover {
+            background: #d32f2f;
+            box-shadow: 0 6px 20px rgba(239, 83, 80, 0.35);
+        }
+
+        .input-area .btn-sm {
+            padding: 8px 18px;
+            font-size: 14px;
+        }
+
+        .btn-simulate {
+            background: transparent;
+            color: #90a4ae;
+            box-shadow: none;
+            border: 1px dashed #cfdbe9;
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 400;
+        }
+        .btn-simulate:hover {
+            background: #f0f4fa;
+            color: #546e7a;
+            border-color: #b0c4de;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* ===== Toast ===== */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: #1a237e;
+            color: #fff;
+            padding: 12px 28px;
+            border-radius: 40px;
+            font-size: 15px;
+            font-weight: 500;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.18);
+            opacity: 0;
+            transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            pointer-events: none;
+            z-index: 999;
+            white-space: nowrap;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        .toast.success {
+            background: #0d47a1;
+        }
+        .toast.info {
+            background: #37474f;
+        }
+
+        /* ===== 响应式 ===== */
+        @media (max-width: 700px) {
+            body {
+                padding: 12px 12px 20px;
+            }
+            .header {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+            .header-left {
+                justify-content: space-between;
+                flex-wrap: wrap;
+            }
+            .header-left h1 {
+                font-size: 22px;
+                white-space: normal;
+            }
+            .header-left .stats {
+                font-size: 13px;
+                padding: 4px 14px;
+                gap: 12px;
+            }
+            .header-right {
+                justify-content: flex-start;
+            }
+            .qr-wrapper .qr-label {
+                font-size: 11px;
+            }
+            .cloud-wrapper {
+                min-height: 220px;
+                padding: 18px 14px;
+                gap: 10px 12px;
+            }
+            .word-bubble {
+                font-size: 16px;
+                padding: 5px 14px;
+                max-width: 180px;
+            }
+            .input-area {
+                padding: 14px 16px;
+                border-radius: 30px;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+            .input-area .input-group {
+                flex-wrap: wrap;
+                min-width: unset;
+            }
+            .input-area input[type="text"] {
+                font-size: 15px;
+                padding: 11px 16px;
+                min-width: 100px;
+            }
+            .input-area .btn {
+                padding: 10px 20px;
+                font-size: 15px;
+            }
+            .input-area .btn-sm {
+                padding: 7px 14px;
+                font-size: 13px;
+            }
+            .qr-wrapper #qrcode-container {
+                width: 36px;
+                height: 36px;
+            }
+            .qr-wrapper #qrcode-container img,
+            .qr-wrapper #qrcode-container canvas {
+                width: 36px !important;
+                height: 36px !important;
+            }
+            .qr-settings input[type="text"] {
+                font-size: 13px;
+            }
+        }
+
+        @media (max-width: 420px) {
+            .header-left h1 {
+                font-size: 19px;
+            }
+            .header-left .stats {
+                font-size: 12px;
+                padding: 4px 10px;
+                gap: 8px;
+            }
+            .word-bubble {
+                font-size: 14px;
+                padding: 4px 12px;
+            }
+            .cloud-wrapper {
+                min-height: 160px;
+                padding: 14px 10px;
+                gap: 8px 10px;
+            }
+            .input-area input[type="text"] {
+                font-size: 14px;
+                padding: 10px 14px;
+            }
+            .qr-wrapper .qr-label {
+                font-size: 10px;
+            }
+            .qr-wrapper .qr-label small {
+                font-size: 9px;
+            }
+        }
+
+        /* 统计数字跳动 */
+        .stats .num.bump {
+            animation: bump 0.25s ease;
+        }
+        @keyframes bump {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.35);
+                color: #0d47a1;
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .cloud-wrapper::-webkit-scrollbar {
+            width: 4px;
+        }
+        .cloud-wrapper::-webkit-scrollbar-track {
+            background: #f0f4fa;
+            border-radius: 10px;
+        }
+        .cloud-wrapper::-webkit-scrollbar-thumb {
+            background: #c5d5e8;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app">
+
+        <!-- ===== 顶部栏 ===== -->
+        <header class="header">
+            <div class="header-left">
+                <h1>☁️ 词云互动</h1>
+                <div class="stats">
+                    <span>📚 词汇 <span class="num" id="wordCount">0</span></span>
+                    <span>📝 提交 <span class="num" id="totalCount">0</span></span>
+                    <span>🔥 热门 <span class="num" id="topWord">-</span></span>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="qr-wrapper" title="扫描二维码，手机提交词汇">
+                    <div id="qrcode-container"></div>
+                    <div class="qr-label">
+                        扫码提交
+                        <small>手机扫一扫</small>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- 二维码设置面板（本地时自动显示） -->
+        <div class="qr-settings" id="qrSettings">
+            <span class="hint">📡 当前为本地文件，请填写部署后的网址：</span>
+            <input type="text" id="qrUrlInput" placeholder="例如 https://你的域名.com/wordcloud" />
+            <button class="btn-sm" id="qrUpdateBtn">更新二维码</button>
+            <span class="hint" style="flex-basis:100%;">* 将页面部署到 Web 服务器后，学生扫码即可访问</span>
+        </div>
+
+        <!-- ===== 词云展示区 ===== -->
+        <div class="cloud-wrapper" id="cloudContainer"></div>
+
+        <!-- ===== 底部输入区 ===== -->
+        <div class="input-area">
+            <div class="input-group">
+                <label for="wordInput">✏️</label>
+                <input
+                type="text"
+                id="wordInput"
+                placeholder="输入一个词汇，按回车提交"
+                autocomplete="off"
+                autocorrect="off"
+                spellcheck="false"
+                maxlength="30"
+                />
+                <button class="btn" id="submitBtn">提交</button>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn btn-secondary btn-sm" id="clearBtn">🗑 清空</button>
+                <button class="btn btn-sm btn-simulate" id="simulateBtn">🎲 模拟提交</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Toast ===== -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            // ============================================================
+            //  数据 ———— 初始为空
+            // ============================================================
+            const wordMap = new Map();
+            let totalSubmissions = 0;
+
+            // DOM
+            const cloudEl = document.getElementById('cloudContainer');
+            const wordInput = document.getElementById('wordInput');
+            const submitBtn = document.getElementById('submitBtn');
+            const clearBtn = document.getElementById('clearBtn');
+            const simulateBtn = document.getElementById('simulateBtn');
+            const wordCountEl = document.getElementById('wordCount');
+            const totalCountEl = document.getElementById('totalCount');
+            const topWordEl = document.getElementById('topWord');
+            const toastEl = document.getElementById('toast');
+            const qrContainer = document.getElementById('qrcode-container');
+            const qrSettings = document.getElementById('qrSettings');
+            const qrUrlInput = document.getElementById('qrUrlInput');
+            const qrUpdateBtn = document.getElementById('qrUpdateBtn');
+
+            let qrCodeInstance = null;
+
+            // ============================================================
+            //  辅助：字符串哈希 → 色相 (0~360)
+            // ============================================================
+            function getHueFromString(str) {
+                let hash = 0;
+                for (let i = 0; i < str.length; i++) {
+                    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+                    hash = hash & hash; // 保持32位整数
+                }
+                // 取绝对值并映射到0~360
+                return Math.abs(hash) % 360;
+            }
+
+            // ============================================================
+            //  核心函数
+            // ============================================================
+            function submitWord(rawWord) {
+                let word = rawWord.trim();
+                if (!word) {
+                    showToast('请输入词汇', 'info');
+                    return false;
+                }
+                if (word.length > 30) {
+                    showToast('词汇不能超过30个字符', 'info');
+                    return false;
+                }
+                const key = word.toLowerCase();
+                const current = wordMap.get(key) || 0;
+                wordMap.set(key, current + 1);
+                totalSubmissions++;
+
+                renderCloud();
+                updateStats();
+
+                wordInput.value = '';
+                wordInput.focus();
+                showToast(`✨ “${word}” +1`, 'success');
+                return true;
+            }
+
+            // 洗牌函数 (Fisher-Yates)
+            function shuffleArray(arr) {
+                for (let i = arr.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                }
+                return arr;
+            }
+
+            function renderCloud() {
+                if (wordMap.size === 0) {
+                    cloudEl.innerHTML = '';
+                    return;
+                }
+
+                let maxCount = 0;
+                for (const [, count] of wordMap) {
+                    if (count > maxCount) maxCount = count;
+                }
+                if (maxCount === 0) maxCount = 1;
+
+                // 获取所有词条，随机打乱
+                const entries = Array.from(wordMap.entries());
+                shuffleArray(entries);
+
+                const fragment = document.createDocumentFragment();
+
+                for (const [word, count] of entries) {
+                    const ratio = count / maxCount; // 0~1
+
+                    // 字体大小
+                    const minSize = 16;
+                    const maxSize = 52;
+                    const size = minSize + ratio * (maxSize - minSize);
+
+                    // 颜色：基于词汇内容生成色相，饱和度与明度随频次变化
+                    const hue = getHueFromString(word);
+                    const saturation = 70 + ratio * 20; // 70% ~ 90%
+                    const lightness = 40 + ratio * 25; // 40% ~ 65%
+                    const bgColor = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+
+                    // 阴影颜色稍带色相倾向但保持半透明黑
+                    const shadowColor = `hsla(${hue}, 60%, 20%, ${0.15 + ratio * 0.2})`;
+
+                    const bubble = document.createElement('span');
+                    bubble.className = 'word-bubble';
+                    bubble.textContent = word;
+                    bubble.style.fontSize = size + 'px';
+                    bubble.style.backgroundColor = bgColor;
+                    bubble.style.boxShadow =
+                        `0 4px 16px ${shadowColor}, 0 1px 4px rgba(0,0,0,0.05)`;
+                    const pad = 6 + ratio * 8;
+                    bubble.style.padding = `${pad}px ${pad + 10}px`;
+
+                    bubble.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        showToast(`“${word}” 出现 ${count} 次`, 'info');
+                        this.style.animation = 'none';
+                        void this.offsetHeight;
+                        this.style.animation = 'popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both';
+                    });
+
+                    fragment.appendChild(bubble);
+                }
+
+                cloudEl.innerHTML = '';
+                cloudEl.appendChild(fragment);
+            }
+
+            function updateStats() {
+                const count = wordMap.size;
+                wordCountEl.textContent = count;
+                totalCountEl.textContent = totalSubmissions;
+
+                let topWord = '-';
+                let topFreq = 0;
+                for (const [word, freq] of wordMap) {
+                    if (freq > topFreq) {
+                        topFreq = freq;
+                        topWord = word;
+                    }
+                }
+                if (topFreq > 0) {
+                    topWordEl.textContent = topWord + (topFreq > 1 ? ` (${topFreq})` : '');
+                } else {
+                    topWordEl.textContent = '-';
+                }
+
+                [wordCountEl, totalCountEl].forEach(el => {
+                    el.classList.remove('bump');
+                    void el.offsetHeight;
+                    el.classList.add('bump');
+                });
+            }
+
+            function clearAll() {
+                if (wordMap.size === 0) {
+                    showToast('词云已经是空的了', 'info');
+                    return;
+                }
+                if (!confirm('确定要清空所有词汇吗？')) return;
+                wordMap.clear();
+                totalSubmissions = 0;
+                renderCloud();
+                updateStats();
+                showToast('已清空所有词汇', 'info');
+                wordInput.focus();
+            }
+
+            function simulateSubmission() {
+                const mockWords = [
+                    '创新', '合作', '探索', '勇气', '坚持',
+                    '智慧', '热情', '专注', '灵感', '突破',
+                    '和谐', '包容', '诚信', '责任', '担当',
+                    '未来', '科技', '人文', '自然', '生命',
+                    '青春', '奋斗', '梦想', '阳光', '希望',
+                    '爱', '和平', '自由', '平等', '友善'
+                ];
+                const count = Math.floor(Math.random() * 3) + 1;
+                const selected = [];
+                for (let i = 0; i < count; i++) {
+                    const idx = Math.floor(Math.random() * mockWords.length);
+                    selected.push(mockWords[idx]);
+                }
+                const existing = Array.from(wordMap.keys());
+                if (existing.length > 2 && Math.random() > 0.5) {
+                    const idx = Math.floor(Math.random() * existing.length);
+                    selected.push(existing[idx]);
+                }
+                selected.sort(() => Math.random() - 0.5);
+
+                let submitted = 0;
+                for (const w of selected) {
+                    if (submitWord(w)) {
+                        submitted++;
+                    }
+                }
+                if (submitted > 0) {
+                    showToast(`🎯 模拟 ${submitted} 个词汇提交`, 'success');
+                }
+            }
+
+            // ============================================================
+            //  Toast
+            // ============================================================
+            let toastTimer = null;
+
+            function showToast(msg, type = 'info') {
+                toastEl.textContent = msg;
+                toastEl.className = 'toast ' + type;
+                void toastEl.offsetHeight;
+                toastEl.classList.add('show');
+                clearTimeout(toastTimer);
+                toastTimer = setTimeout(() => {
+                    toastEl.classList.remove('show');
+                }, 1800);
+            }
+
+            // ============================================================
+            //  二维码生成 (纯前端)
+            // ============================================================
+            function generateQR(text) {
+                qrContainer.innerHTML = '';
+                if (!text) {
+                    qrContainer.textContent = '⚠️';
+                    return;
+                }
+                try {
+                    qrCodeInstance = new QRCode(qrContainer, {
+                        text: text,
+                        width: 44,
+                        height: 44,
+                        colorDark: '#1a237e',
+                        colorLight: '#ffffff',
+                        correctLevel: QRCode.CorrectLevel.H
+                    });
+                } catch (e) {
+                    console.warn('QR生成失败', e);
+                    qrContainer.textContent = '❌';
+                }
+            }
+
+            function getDefaultQRUrl() {
+                let url = window.location.href;
+                if (url.startsWith('file://')) {
+                    return null;
+                }
+                try {
+                    const u = new URL(url);
+                    u.search = '';
+                    u.hash = '';
+                    return u.toString();
+                } catch (_) {
+                    return url;
+                }
+            }
+
+            function initQR() {
+                const defaultUrl = getDefaultQRUrl();
+                if (defaultUrl) {
+                    qrSettings.classList.remove('active');
+                    generateQR(defaultUrl);
+                } else {
+                    qrSettings.classList.add('active');
+                    qrUrlInput.placeholder = '请填写部署后的网址';
+                    const saved = localStorage.getItem('qrCustomUrl');
+                    if (saved) {
+                        qrUrlInput.value = saved;
+                        generateQR(saved);
+                    } else {
+                        generateQR('请部署后填写网址');
+                    }
+                }
+            }
+
+            function updateQRFromInput() {
+                let url = qrUrlInput.value.trim();
+                if (!url) {
+                    showToast('请输入有效网址', 'info');
+                    return;
+                }
+                if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                    url = 'https://' + url;
+                }
+                qrUrlInput.value = url;
+                localStorage.setItem('qrCustomUrl', url);
+                generateQR(url);
+                showToast('二维码已更新', 'success');
+            }
+
+            // ============================================================
+            //  事件绑定
+            // ============================================================
+            submitBtn.addEventListener('click', function() {
+                submitWord(wordInput.value);
+            });
+            wordInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    submitWord(this.value);
+                }
+            });
+            clearBtn.addEventListener('click', clearAll);
+            simulateBtn.addEventListener('click', simulateSubmission);
+            cloudEl.addEventListener('click', function() {
+                wordInput.focus();
+            });
+
+            qrUpdateBtn.addEventListener('click', updateQRFromInput);
+            qrUrlInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    updateQRFromInput();
+                }
+            });
+
+            // ============================================================
+            //  初始化
+            // ============================================================
+            function init() {
+                renderCloud();
+                updateStats();
+                initQR();
+                wordInput.focus();
+                console.log('✅ 课堂互动词云已启动（彩色气泡，初始无词汇）');
+            }
+
+            if (document.readyState === 'complete') {
+                init();
+            } else {
+                window.addEventListener('load', init);
+            }
+
+            // 键盘快捷键 Ctrl+Enter
+            document.addEventListener('keydown', function(e) {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    const val = wordInput.value;
+                    if (val) {
+                        submitWord(val);
+                    }
+                }
+            });
+
+            // 暴露调试
+            window.__wordCloud = {
+                wordMap,
+                totalSubmissions,
+                submitWord,
+                clearAll,
+                simulateSubmission,
+                renderCloud,
+                updateStats,
+                generateQR
+            };
+
+        })();
+    </script>
+</body>
+</html>
